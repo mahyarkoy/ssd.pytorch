@@ -25,7 +25,8 @@ VOC_CLASSES = (  # always index 0
     'sheep', 'sofa', 'train', 'tvmonitor')
 
 # note: if you used our download scripts, this should be right
-VOC_ROOT = osp.join(HOME, "data/VOCdevkit/")
+#VOC_ROOT = osp.join(HOME, "data/VOCdevkit/")
+VOC_ROOT = "/media/evl/Public/Mahyar/Data/voc/VOCdevkit/"
 
 
 class VOCAnnotationTransform(object):
@@ -95,9 +96,9 @@ class VOCDetection(data.Dataset):
     """
 
     def __init__(self, root,
-                 image_sets=[('2007', 'trainval'), ('2012', 'trainval')],
+                 image_sets=[('2007', 'trainval')],
                  transform=None, target_transform=VOCAnnotationTransform(),
-                 dataset_name='VOC0712'):
+                 dataset_name='VOC07'):
         self.root = root
         self.image_set = image_sets
         self.transform = transform

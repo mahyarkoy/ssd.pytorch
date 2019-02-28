@@ -14,6 +14,10 @@ import torch.nn.init as init
 import torch.utils.data as data
 import numpy as np
 import argparse
+from progressbar import ETA, Bar, Percentage, ProgressBar
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
+os.environ["CUDA_VISIBLE_DEVICES"] = "1" # "0, 1" for multiple
 
 
 def str2bool(v):
@@ -81,8 +85,6 @@ def train():
                                 transform=SSDAugmentation(cfg['min_dim'],
                                                           MEANS))
     elif args.dataset == 'VOC':
-        if args.dataset_root == COCO_ROOT:
-            parser.error('Must specify dataset if specifying dataset_root')
         cfg = voc
         dataset = VOCDetection(root=args.dataset_root,
                                transform=SSDAugmentation(cfg['min_dim'],
@@ -127,7 +129,7 @@ def train():
     loc_loss = 0
     conf_loss = 0
     epoch = 0
-    print('Loading the dataset...')
+    vis_epoch = 0
 
     epoch_size = len(dataset) // args.batch_size
     print('Training SSD on:', dataset.name)
@@ -147,26 +149,38 @@ def train():
                                   shuffle=True, collate_fn=detection_collate,
                                   pin_memory=True)
     # create batch iterator
+    total_epoch = (cfg['max_iter'] - args.start_iter) // len(data_loader)
+    print('Loading the dataset...')
+    widgets = ["SSD", Percentage(), Bar(), ETA()]
+    pbar = ProgressBar(maxval=(cfg['max_iter'] - args.start_iter), widgets=widgets)
+    pbar.start()
     batch_iterator = iter(data_loader)
     for iteration in range(args.start_iter, cfg['max_iter']):
+        pbar.update(iteration)
         if args.visdom and iteration != 0 and (iteration % epoch_size == 0):
             update_vis_plot(epoch, loc_loss, conf_loss, epoch_plot, None,
                             'append', epoch_size)
             # reset epoch loss counters
             loc_loss = 0
             conf_loss = 0
-            epoch += 1
+            vis_epoch += 1
 
         if iteration in cfg['lr_steps']:
             step_index += 1
             adjust_learning_rate(optimizer, args.gamma, step_index)
 
         # load train data
-        images, targets = next(batch_iterator)
+        try:
+            images, targets = next(batch_iterator)
+        except StopIteration:
+            epoch += 1
+            print('>>> epoch [{}/{}]: done.'.format(epoch, total_epoch))
+            batch_iterator = iter(data_loader)
+            images, targets = next(batch_iterator)
 
         if args.cuda:
             images = Variable(images.cuda())
-            targets = [Variable(ann.cuda(), volatile=True) for ann in targets]
+            targets = [Variable(ann.cuda(), requires_grad=True) for ann in targets]
         else:
             images = Variable(images)
             targets = [Variable(ann, volatile=True) for ann in targets]
@@ -180,12 +194,12 @@ def train():
         loss.backward()
         optimizer.step()
         t1 = time.time()
-        loc_loss += loss_l.data[0]
-        conf_loss += loss_c.data[0]
+        loc_loss += loss_l.item()
+        conf_loss += loss_c.item()
 
         if iteration % 10 == 0:
             print('timer: %.4f sec.' % (t1 - t0))
-            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.data[0]), end=' ')
+            print('iter ' + repr(iteration) + ' || Loss: %.4f ||' % (loss.item()), end=' ')
 
         if args.visdom:
             update_vis_plot(iteration, loss_l.data[0], loss_c.data[0],
@@ -193,7 +207,7 @@ def train():
 
         if iteration != 0 and iteration % 5000 == 0:
             print('Saving state, iter:', iteration)
-            torch.save(ssd_net.state_dict(), 'weights/ssd300_COCO_' +
+            torch.save(ssd_net.state_dict(), 'weights/ssd300_VOC_' +
                        repr(iteration) + '.pth')
     torch.save(ssd_net.state_dict(),
                args.save_folder + '' + args.dataset + '.pth')
@@ -211,7 +225,7 @@ def adjust_learning_rate(optimizer, gamma, step):
 
 
 def xavier(param):
-    init.xavier_uniform(param)
+    init.xavier_uniform_(param)
 
 
 def weights_init(m):
