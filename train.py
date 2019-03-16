@@ -14,7 +14,9 @@ import torch.nn.init as init
 import torch.utils.data as data
 import numpy as np
 import argparse
+import pickle as pk
 from progressbar import ETA, Bar, Percentage, ProgressBar
+from condet_util import prep_voc_aod_data, prep_cub_aod_data
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
 os.environ["CUDA_VISIBLE_DEVICES"] = "1" # "0, 1" for multiple
@@ -27,8 +29,8 @@ def str2bool(v):
 parser = argparse.ArgumentParser(
     description='Single Shot MultiBox Detector Training With Pytorch')
 train_set = parser.add_mutually_exclusive_group()
-parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
-                    type=str, help='VOC or COCO')
+parser.add_argument('--dataset', default='AOD', choices=['VOC', 'COCO', 'AOD'],
+                    type=str, help='VOC or COCO or AOD')
 parser.add_argument('--dataset_root', default=VOC_ROOT,
                     help='Dataset root directory path')
 parser.add_argument('--basenet', default='vgg16_reducedfc.pth',
@@ -71,7 +73,6 @@ else:
 if not os.path.exists(args.save_folder):
     os.mkdir(args.save_folder)
 
-
 def train():
     if args.dataset == 'COCO':
         if args.dataset_root == VOC_ROOT:
@@ -87,6 +88,18 @@ def train():
     elif args.dataset == 'VOC':
         cfg = voc
         dataset = VOCDetection(root=args.dataset_root,
+                               transform=SSDAugmentation(cfg['min_dim'],
+                                                         MEANS))
+    elif args.dataset == 'AOD':
+        cfg = aod
+        voc_aod_path = '/media/evl/Public/Mahyar/condet_logs/47_logs_10stn_vocbird50/run_2/voc_bird_10_500_500_2.cpk'
+        im_names, bboxes = prep_voc_aod_data(voc_aod_path)
+
+        #cub_aod_path = '/media/evl/Public/Mahyar/condet_logs/46_logs_10stn_cub1shot/run_0/cub_split_1_5_50_0.cpk'
+        #im_names, bboxes = prep_cub_aod_data(cub_aod_path)
+
+        #MEANS = (104, 117, 123)
+        dataset = AODDetection(im_names, bboxes,
                                transform=SSDAugmentation(cfg['min_dim'],
                                                          MEANS))
 
@@ -151,6 +164,7 @@ def train():
     # create batch iterator
     total_epoch = (cfg['max_iter'] - args.start_iter) // len(data_loader)
     print('Loading the dataset...')
+    print('>>> Dataset size: ', len(data_loader))
     widgets = ["SSD", Percentage(), Bar(), ETA()]
     pbar = ProgressBar(maxval=(cfg['max_iter'] - args.start_iter), widgets=widgets)
     pbar.start()

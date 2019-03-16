@@ -32,6 +32,7 @@ class Detect(Function):
                 Shape: [1,num_priors,4]
         """
         num = loc_data.size(0)  # batch size
+        #print('>>> loc_data: ', loc_data.size())
         num_priors = prior_data.size(0)
         output = torch.zeros(num, self.num_classes, self.top_k, 5)
         conf_preds = conf_data.view(num, num_priors,
@@ -40,12 +41,16 @@ class Detect(Function):
         # Decode predictions into bboxes.
         for i in range(num):
             decoded_boxes = decode(loc_data[i], prior_data, self.variance)
+            #print('>>> decoded boxes: ', decoded_boxes.size())
             # For each class, perform nms
             conf_scores = conf_preds[i].clone()
+            #print('>>> conf scores: ', conf_scores.cpu().numpy())
 
             for cl in range(1, self.num_classes):
-                c_mask = conf_scores[cl].gt(self.conf_thresh)
+                #print('>>> conf threshold: ', self.conf_thresh)
+                c_mask = conf_scores[cl].gt(1e-10)#self.conf_thresh)
                 scores = conf_scores[cl][c_mask]
+                #print('>>> masked conf scores: ', scores.size())
                 if scores.dim() == 0:
                     continue
                 l_mask = c_mask.unsqueeze(1).expand_as(decoded_boxes)

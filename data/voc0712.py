@@ -165,6 +165,8 @@ class VOCDetection(data.Dataset):
         Return:
             list:  [img_id, [(label, bbox coords),...]]
                 eg: ('001718', [('dog', (96, 13, 438, 332))])
+        Return:
+            img_id, [[bbox coords, class_id],...]
         '''
         img_id = self.ids[index]
         anno = ET.parse(self._annopath % img_id).getroot()

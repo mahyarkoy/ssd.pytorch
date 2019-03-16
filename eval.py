@@ -360,7 +360,9 @@ cachedir: Directory for caching the annotations
 
     return rec, prec, ap
 
-
+'''
+Forward the net on dataset to collect the detections.
+'''
 def test_net(save_folder, net, cuda, dataset, transform, top_k,
              im_size=300, thresh=0.05):
     num_images = len(dataset)
@@ -376,12 +378,16 @@ def test_net(save_folder, net, cuda, dataset, transform, top_k,
     det_file = os.path.join(output_dir, 'detections.pkl')
 
     for i in range(num_images):
+        ### read data from dataset
         im, gt, h, w = dataset.pull_item(i)
 
         x = Variable(im.unsqueeze(0))
         if args.cuda:
             x = x.cuda()
         _t['im_detect'].tic()
+
+        ### run networn on data, detections shape: (num_im, num_classes, num_boxes, 5)
+        ### the 5 nums per box are: (conf_score, xmin, ymin, xmax, ymax)
         detections = net(x).data
         detect_time = _t['im_detect'].toc(average=False)
 

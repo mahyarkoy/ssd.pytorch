@@ -185,6 +185,7 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
     """
 
     keep = scores.new(scores.size(0)).zero_().long()
+    #print('>>> boxes numel: ', boxes.numel())
     if boxes.numel() == 0:
         return keep
     x1 = boxes[:, 0]
