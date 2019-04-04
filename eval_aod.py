@@ -152,7 +152,7 @@ if __name__ == '__main__':
 	im_names, bboxes = prep_voc_aod_data(voc_aod_path, 'test')
 
 	#cub_aod_path = '/media/evl/Public/Mahyar/condet_logs/46_logs_10stn_cub1shot/run_0/cub_split_1_5_50_0.cpk'
-	#im_names, bboxes = prep_cub_aod_data(cub_aod_path)
+	#im_names, bboxes = prep_cub_aod_data(cub_aod_path, 'test')
 	
 	dataset_mean = (104, 117, 123)
 	dataset = AODDetection(im_names, bboxes,
