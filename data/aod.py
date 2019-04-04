@@ -70,7 +70,7 @@ class AODDetection(data.Dataset):
 		im_name = self.imn_list[index]
 
 		### read bounding boxes and do not scale: [xmin, ymin, xmax, ymax]
-		im_bbox = 1. * np.array([self.bbox_list[index]])
+		im_bbox = 1. * np.array(self.bbox_list[index])
 
 		### add a dummy label to the end of each bbox: [xmin, ymin, xmax, ymax, 1]
 		im_lab = 0 * np.ones((im_bbox.shape[0], 1), dtype=np.int)

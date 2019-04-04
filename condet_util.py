@@ -223,7 +223,7 @@ def prep_cub_aod_data(cub_aod_path, phase='train'):
 	cub_path = '/media/evl/Public/Mahyar/Data/cub/CUB_200_2011'
 	print('>>> preparing data from: ', cub_aod_path)
 	with open(cub_aod_path, 'rb') as fs:
-		cub_co_order, cub_test_order, cub_train_order = pk.load(fs)
+		cub_co_order, cub_test_order, cub_train_order = pk.load(fs, encoding='latin1')
 	cub_data_order = cub_test_order if phase == 'test' else cub_co_order
 	im_names, bboxes = read_cub_ssd(cub_path, cub_data_order)
 	print('>>> im_names size: ', len(im_names))
@@ -274,7 +274,7 @@ def read_cub(cub_path, co_order, test_order, train_order, im_size=128, co_size=6
 	train_bb = list()
 	test_bb = list()
 	total_num = co_num + test_num + train_num
-	print '>>> Reading CUB from: '+cub_path
+	print('>>> Reading CUB from: ' + cub_path)
 	widgets = ["CUB", Percentage(), Bar(), ETA()]
 	pbar = ProgressBar(maxval=total_num, widgets=widgets)
 	pbar.start()

@@ -1,13 +1,43 @@
 import pickle as pk
 import numpy as np
 import os
-
-from data import AODDetection, BaseTransform
-from condet_util import prep_voc_aod_data, prep_cub_aod_data
-from calculate_mean_ap import get_avg_precision_at_iou
+import time
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID" # so the IDs match nvidia-smi
 os.environ["CUDA_VISIBLE_DEVICES"] = "1" # "0, 1" for multiple
+
+import torch
+import torch.nn as nn
+import torch.backends.cudnn as cudnn
+from torch.autograd import Variable
+from data import AODDetection, BaseTransform
+from condet_util import prep_voc_aod_data, prep_cub_aod_data
+from calculate_mean_ap import get_avg_precision_at_iou
+from ssd import build_ssd
+
+class Timer(object):
+	"""A simple timer."""
+	def __init__(self):
+		self.total_time = 0.
+		self.calls = 0
+		self.start_time = 0.
+		self.diff = 0.
+		self.average_time = 0.
+
+	def tic(self):
+		# using time.time instead of time.clock because time time.clock
+		# does not normalize for multithreading
+		self.start_time = time.time()
+
+	def toc(self, average=True):
+		self.diff = time.time() - self.start_time
+		self.total_time += self.diff
+		self.calls += 1
+		self.average_time = self.total_time / self.calls
+		if average:
+			return self.average_time
+		else:
+			return self.diff
 
 '''
 read the annotations and return list of shape [class_num+1, image_num, 4]
@@ -92,16 +122,26 @@ def test_net(save_path, net, cuda, dataset):
 													num_images, detect_time))
 
 	with open(save_path, 'wb') as f:
-		pickle.dump(all_boxes, f, pickle.HIGHEST_PROTOCOL)
+		pk.dump(all_boxes, f, pk.HIGHEST_PROTOCOL)
 
 	return all_boxes
 
 if __name__ == '__main__':
 	pred_save_path = '/media/evl/Public/Mahyar/ssd_logs/ssd_0/ssd300_120000/test/detections.pkl'
 	save_path = '/media/evl/Public/Mahyar/ssd_logs/ssd_0/logs_ap.txt'
-	model_path = '/media/evl/Public/Mahyar/ssd_logs/ssd_0/ssd300_120000'
+	model_path = '/media/evl/Public/Mahyar/ssd_logs/ssd_0/weights/AOD.pth'
 	num_classes = 2
 	cuda = True
+
+	if torch.cuda.is_available():
+		if cuda:
+			torch.set_default_tensor_type('torch.cuda.FloatTensor')
+		if not cuda:
+			print("WARNING: It looks like you have a CUDA device, but aren't using \
+				  CUDA.  Run with --cuda for optimal eval speed.")
+			torch.set_default_tensor_type('torch.FloatTensor')
+	else:
+		torch.set_default_tensor_type('torch.FloatTensor')
 
 	net = build_ssd('test', 300, num_classes)
 	net.load_state_dict(torch.load(model_path))
